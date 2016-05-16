@@ -1,5 +1,8 @@
 from PIL import Image, ImageDraw
 from random import randint
+from datetime import datetime
+import os
+from math import sqrt
 
 # Объявляем глоюальные переменные
 colors = [(0, 0, 205), (0, 191, 255), (0, 255, 0), (46, 139, 87),
@@ -7,6 +10,7 @@ colors = [(0, 0, 205), (0, 191, 255), (0, 255, 0), (46, 139, 87),
           (160, 32, 240), (255, 246, 143)]
 clusters = {}
 mark = 0
+result = []
 
 def colorGen(color=colors):
     # Случайным образом выбирает цвет из входного массива.
@@ -17,10 +21,13 @@ def convertToBMP(adress):
     # и устранения шумов. Принимает 1 аргумент - адрес изображения, возвращает
     # адрес конвертированого изображения.
     img = Image.open(adress)
+    date = datetime.strftime(datetime.now(), "%d-%m-%y %H-%M-%S")
+    os.mkdir('image\\'+adress.split('.')[0]+str(date)) #создаем доп. папку
+    os.chdir('image\\'+adress.split('.')[0]+str(date)) #делаем ее рабочей
     if img.format != 'BMP':
         adress = adress.split('.')[0]+'.bmp'
-    img.save('image\\'+adress, 'BMP')
-    return 'image\\'+adress
+    img.save(adress, 'BMP')
+    return adress
 
 def filterAndLines(adress):
     # Дорисовывает по верхнему и левому краю изображения две белых линии.
@@ -115,6 +122,44 @@ def variegation(dic, img):
                 draw.point((elem[0], elem[1]), color)
     del draw
 
+def calc(dic, result):
+    # Производит вычисления радиусов инерции кластеров. На врод принимает массив
+    # кластеров, и массив результатов, возвращает заполненный массив результатов.
+    for item in dic.keys():
+        temp=[]
+        acc = 0
+        for elem in dic[item]:
+            temp.append(sqrt(elem[0]**2 + elem[1]**2))
+            acc += temp[-1]
+        r_mid = acc/len(dic[item])
+        acc = 0
+        for elem in temp:
+            elem = ((elem - r_mid)**2)
+            acc+=elem/len(dic[item])
+        result.append(sqrt(acc))
+        
+    result.sort()
+    return result
+
+def data_rec(arr, adress):
+    # Записывает данные из массива результатов в файл, который находится в той же 
+    # папке чтто и изображение. Принимает массив результатов и адрес изображения.
+    adress=adress.split('.')[0]+'.dat'
+    file = open(adress, 'x')
+    temp=[]
+    for item in arr:
+        if item==0:
+            continue
+        else:
+            temp.append(item)
+    num=len(temp)
+    for i in range(0, num, 5):
+        file.write(str(temp[i])+'\t'+str(i/num)+'\n')
+    file.write(str(temp[num-1])+'\t'+str(1-1/num)+'\n')
+    file.close()
+
+    
+
 
 adress=input("Write an adress of initial image: ")
 adress = filterAndLines(convertToBMP(adress))
@@ -122,3 +167,5 @@ img = Image.open(adress)
 hoshenKopelmanAnalysis(img)
 variegation(clusters, img)
 img.save(adress, 'BMP')
+calc(clusters, result)
+data_rec(result, adress)
